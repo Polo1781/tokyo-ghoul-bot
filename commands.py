@@ -542,3 +542,162 @@ async def setup_commands(bot):
             embed.set_footer(text=f"Total: {len(channels)} canais")
         
         await ctx.send(embed=embed)
+import discord
+from discord.ext import commands
+import random
+
+# Protótipo, adapte para o seu bot principal!
+class CriarView(discord.ui.View):
+    def __init__(self, user):
+        super().__init__(timeout=60)
+        self.user = user
+        self.result = None
+
+    async def interaction_check(self, interaction):
+        return interaction.user == self.user
+
+class ClasseView(CriarView):
+    @discord.ui.button(label="Sortear Classe!", style=discord.ButtonStyle.primary)
+    async def roll_class(self, interaction: discord.Interaction, button: discord.ui.Button):
+        classes = ["Ghoul", "CCG"]
+        classe = random.choice(classes)
+        self.result = classe
+        await interaction.response.edit_message(content=f"Você é: **{classe}**!\nPróximo passo: Rolls de família...", view=None)
+        self.stop()
+
+class FamiliaView(CriarView):
+    def __init__(self, user, classe):
+        super().__init__(user)
+        self.familias = {
+            "Ghoul": [
+                {"nome": "Kirishima", "raridade": "Épico", "atributos": "Força +3"},
+                {"nome": "Tsukiyama", "raridade": "Raro", "atributos": "Inteligência +2"},
+                {"nome": "Kamishiro", "raridade": "Comum", "atributos": "Agilidade +1"},
+            ],
+            "CCG": [
+                {"nome": "Washuu", "raridade": "Épico", "atributos": "Estratégia +3"},
+                {"nome": "Mado", "raridade": "Raro", "atributos": "Determinação +2"},
+                {"nome": "Akira", "raridade": "Comum", "atributos": "Velocidade +1"},
+            ]
+        }
+        self.classe = classe
+        self.rolls = random.sample(self.familias[classe], 3)
+        for i, fam in enumerate(self.rolls):
+            self.add_item(self.make_fam_button(fam, i))
+
+    def make_fam_button(self, fam, idx):
+        return discord.ui.Button(
+            label=f"{fam['nome']} ({fam['raridade']})",
+            style=discord.ButtonStyle.secondary,
+            custom_id=str(idx)
+        )
+
+    async def interaction_check(self, interaction):
+        return interaction.user == self.user
+
+    async def on_timeout(self):
+        for item in self.children:
+            item.disabled = True
+
+    @discord.ui.button(label="Escolher Família", style=discord.ButtonStyle.success, row=1)
+    async def choose_family(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message("Escolha uma das famílias acima clicando no botão correspondente.", ephemeral=True)
+
+    async def interaction_check(self, interaction):
+        return interaction.user == self.user
+
+    async def on_button_click(self, interaction):
+        idx = int(interaction.data['custom_id'])
+        fam = self.rolls[idx]
+        self.result = fam
+        await interaction.response.edit_message(content=f"Você escolheu a família: **{fam['nome']}** ({fam['raridade']})\nAtributos: {fam['atributos']}\nPróximo passo: Roll de Habilidades...", view=None)
+        self.stop()
+
+class HabilidadeView(CriarView):
+    def __init__(self, user, classe):
+        super().__init__(user)
+        self.habilidades = {
+            "Ghoul": [
+                "Regeneração (Raro)",
+                "Kagune (Épico)",
+                "Força Sobre-Humana (Comum)"
+            ],
+            "CCG": [
+                "Kura (Raro)",
+                "Tática (Épico)",
+                "Quinque (Comum)"
+            ]
+        }
+        self.rolls = random.sample(self.habilidades[classe], 3)
+        for i, hab in enumerate(self.rolls):
+            self.add_item(discord.ui.Button(label=hab, style=discord.ButtonStyle.secondary, custom_id=str(i)))
+
+    async def on_button_click(self, interaction):
+        idx = int(interaction.data['custom_id'])
+        habilidade = self.rolls[idx]
+        self.result = habilidade
+        await interaction.response.edit_message(content=f"Você escolheu a habilidade: **{habilidade}**\nAgora, preencha seu nome e história. Responda usando: `!finalizar <nome>;<história>`", view=None)
+        self.stop()
+
+# No seu cog ou arquivo de comandos
+class Perfil(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.temp_data = {}  # Para guardar progresso temporário
+
+    @commands.command()
+    async def criar(self, ctx):
+        # Etapa 1: Sorteio de Classe
+        classe_view = ClasseView(ctx.author)
+        msg = await ctx.send("Clique para sortear sua classe!", view=classe_view)
+        await classe_view.wait()
+        if not classe_view.result:
+            return
+        classe = classe_view.result
+        # Etapa 2: Rolls de Família
+        familia_view = FamiliaView(ctx.author, classe)
+        fam_msg = await ctx.send("Escolha uma família entre as opções abaixo:", view=familia_view)
+        await familia_view.wait()
+        if not familia_view.result:
+            return
+        familia = familia_view.result
+        # Etapa 3: Roll de Habilidades
+        habilidade_view = HabilidadeView(ctx.author, classe)
+        hab_msg = await ctx.send("Escolha uma habilidade entre as opções abaixo:", view=habilidade_view)
+        await habilidade_view.wait()
+        if not habilidade_view.result:
+            return
+        habilidade = habilidade_view.result
+
+        # Etapa 4: Questionário Final
+        self.temp_data[ctx.author.id] = {
+            "classe": classe,
+            "familia": familia,
+            "habilidade": habilidade
+        }
+        await ctx.send("Agora, responda usando:\n`!finalizar <nome>;<história>` para terminar seu perfil!")
+
+    @commands.command()
+    async def finalizar(self, ctx, *, arg):
+        # Espera: !finalizar Nome;História
+        if ctx.author.id not in self.temp_data:
+            await ctx.send("Use o comando !criar primeiro!")
+            return
+        try:
+            nome, historia = arg.split(";", 1)
+        except:
+            await ctx.send("Formato inválido! Use: !finalizar <nome>;<história>")
+            return
+        dados = self.temp_data.pop(ctx.author.id)
+        # Aqui você salvaria no banco de dados ou onde preferir
+        await ctx.send(
+            f"Perfil criado!\n"
+            f"Classe: {dados['classe']}\n"
+            f"Família: {dados['familia']['nome']} ({dados['familia']['raridade']})\n"
+            f"Habilidade: {dados['habilidade']}\n"
+            f"Nome: {nome}\n"
+            f"História: {historia}"
+        )
+
+def setup(bot):
+    bot.add_cog(Perfil(bot))
