@@ -542,4 +542,64 @@ async def setup_commands(bot):
             embed.set_footer(text=f"Total: {len(channels)} canais")
         
         await ctx.send(embed=embed)
-    
+      
+  # --- View para Escolha de Facção ---
+class FactionChoiceView(ui.View):
+    def __init__(self, author_id, bot_instance):
+        super().__init__(timeout=180) # Timeout de 3 minutos
+        self.author_id = author_id
+        self.bot = bot_instance
+        self.chosen_faction = None
+
+    @ui.button(label="👹 Ghoul", style=discord.ButtonStyle.danger, custom_id="choose_ghoul")
+    async def ghoul_button(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("Estes botões não são para você!", ephemeral=True)
+            return
+        
+        self.chosen_faction = "ghoul"
+        await interaction.response.send_message(f"Você escolheu ser um Ghoul! Prepare-se para a próxima etapa.", ephemeral=True)
+        # Aqui você desabilitaria os botões e chamaria a próxima View/etapa (Roll de Família)
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
+        # Exemplo: await self.start_family_roll_view(interaction) 
+
+    @ui.button(label="🛡️ CCG", style=discord.ButtonStyle.primary, custom_id="choose_ccg")
+    async def ccg_button(self, interaction: discord.Interaction, button: ui.Button):
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message("Estes botões não são para você!", ephemeral=True)
+            return
+
+        self.chosen_faction = "ccg"
+        await interaction.response.send_message(f"Você escolheu ser um Investigador da CCG! Prepare-se para a próxima etapa.", ephemeral=True)
+        for item in self.children:
+            item.disabled = True
+        await interaction.message.edit(view=self)
+        # Exemplo: await self.start_family_roll_view(interaction)
+
+    # Você precisaria de uma função para iniciar a próxima etapa, por exemplo:
+    # async def start_family_roll_view(self, interaction_or_ctx):
+    #     if self.chosen_faction:
+    #         family_view = FamilyRollView(self.author_id, self.bot, self.chosen_faction)
+    #         # Edita a mensagem original ou envia uma nova com a FamilyRollView
+    #         # await interaction_or_ctx.message.edit(content="Agora role sua família:", view=family_view)
+    #         # ou
+    #         # await interaction_or_ctx.channel.send("Agora role sua família:", view=family_view)
+    #     else:
+    #         # Lidar com caso onde facção não foi escolhida (improvável com botões)
+    #         pass
+
+# No seu setup_commands(bot) ou onde você define os comandos:
+@bot.command(name='criar')
+async def criar_personagem(ctx):
+    # Verificar se o jogador já tem personagem
+    character = await bot.db.get_character(ctx.author.id)
+    if character:
+        await ctx.send(f"{ctx.author.mention}, você já possui um personagem! Use `!perfil` para vê-lo.")
+        return
+
+    view = FactionChoiceView(ctx.author.id, bot)
+    embed = discord.Embed(title="Criação de Personagem - Passo 0: Facção", description="Escolha seu caminho no mundo de Tokyo Ghoul:")
+    # Adicionar campos ao embed se quiser mais detalhes sobre as facções
+    await ctx.send(embed=embed, view=view)
