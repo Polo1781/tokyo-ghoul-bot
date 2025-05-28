@@ -42,8 +42,7 @@ class TokyoGhoulBot(commands.Bot):
         logging.info(f'Bot está em {len(self.guilds)} servidores')
         
         # Definir atividade do bot
-        activity = discord.Game(name="Sistema XP | !xp")
-        await self.change_presence(activity=activity)
+        activity = discord.Game(name="𝐓𝐨𝐤𝐲𝐨 𝐆𝐡𝐨𝐮𝐥 - 𝐒𝐨𝐜𝐢𝐞𝐭𝐲 𝐑𝐞𝐯𝐞𝐧𝐠𝐞")
     
     async def on_message(self, message):
         """Evento chamado quando uma mensagem é enviada"""
