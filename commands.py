@@ -542,9 +542,7 @@ async def setup_commands(bot):
             embed.set_footer(text=f"Total: {len(channels)} canais")
         
         await ctx.send(embed=embed)
-import discord
-from discord.ext import commands
-import random
+
 
 # Protótipo, adapte para o seu bot principal!
 class CriarView(discord.ui.View):
