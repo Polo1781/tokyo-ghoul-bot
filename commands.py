@@ -543,11 +543,6 @@ async def setup_commands(bot):
         
         await ctx.send(embed=embed)
 
-import discord
-from discord.ext import commands
-import random
-import asyncio
-
 # ... (todo o resto do seu código permanece igual até antes do final do arquivo) ...
 
 # --- [NOVO SISTEMA DE CRIAÇÃO DE PERSONAGEM - INÍCIO] ---
