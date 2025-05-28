@@ -80,9 +80,9 @@ class ProfileView(discord.ui.View):
         )
         
         # Barra de progresso XP
-        embed.add_field(
+                embed.add_field(
             name="📈 Progresso XP",
-            value=f"```{progress_bar}```\n"
+            value=f"{progress_bar}\n" # <--- MUDANÇA AQUI
                   f"**{xp_progress:.0f}** / **{xp_needed_next}** XP ({progress_percent:.1f}%)",
             inline=False
         )
